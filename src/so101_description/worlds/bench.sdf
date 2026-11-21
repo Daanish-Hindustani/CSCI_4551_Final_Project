@@ -4,6 +4,27 @@
     <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
     <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
     <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <model name="overhead_camera">
+      <static>true</static>
+      <pose>0.15 0 0.8 0 1.57079632679 0</pose>
+      <link name="camera_link">
+        <sensor name="camera" type="camera">
+          <always_on>true</always_on>
+          <update_rate>15</update_rate>
+          <topic>/overhead_camera/image_raw</topic>
+          <gz_frame_id>overhead_camera_optical_frame</gz_frame_id>
+          <camera>
+            <camera_info_topic>/overhead_camera/camera_info</camera_info_topic>
+            <horizontal_fov>1.0472</horizontal_fov>
+            <image><width>640</width><height>480</height><format>R8G8B8</format></image>
+            <clip><near>0.05</near><far>5</far></clip>
+          </camera>
+        </sensor>
+      </link>
+    </model>
     <light name="sun" type="directional">
       <pose>0 0 5 0 0 0</pose>
       <diffuse>0.9 0.9 0.9 1</diffuse>

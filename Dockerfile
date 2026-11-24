@@ -23,9 +23,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-jazzy-ros2controlcli \
     && rm -rf /var/lib/apt/lists/*
 
+# Perception (so101_perception). Keep in sync with its package.xml.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-numpy \
+    python3-opencv \
+    ros-jazzy-cv-bridge \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /workspace
 COPY src/ src/
-RUN bash -c 'source /opt/ros/jazzy/setup.bash && colcon build'
+RUN bash -c 'source /opt/ros/jazzy/setup.bash && colcon build --symlink-install'
 
 COPY docker/start-desktop.sh /usr/local/bin/start-desktop
 ENV DISPLAY=:1 LIBGL_ALWAYS_SOFTWARE=1 QT_X11_NO_MITSHM=1

@@ -39,3 +39,12 @@ ros2 action send_goal /gripper_controller/follow_joint_trajectory control_msgs/a
 Stop the container with `docker stop so101-jazzy`. To use the RViz slider
 viewer, run the same container command with
 `bash /usr/local/bin/start-desktop display.launch.py` after the image name.
+
+The simulated overhead RGB camera publishes images at
+`/overhead_camera/image_raw` and calibration information at
+`/overhead_camera/camera_info`. It uses 640 × 480 resolution at 15 Hz.
+To check that frames are arriving inside the container, run:
+
+```bash
+ros2 topic hz /overhead_camera/image_raw
+```

@@ -48,3 +48,11 @@ To check that frames are arriving inside the container, run:
 ```bash
 ros2 topic hz /overhead_camera/image_raw
 ```
+
+The wrist-mounted RGB camera moves with the gripper and publishes at
+`/wrist_camera/image_raw` and `/wrist_camera/camera_info`, also at 640 × 480
+and 15 Hz. Its optical frame is `wrist_camera_optical_frame`. Check its feed with:
+
+```bash
+ros2 topic hz /wrist_camera/image_raw
+```

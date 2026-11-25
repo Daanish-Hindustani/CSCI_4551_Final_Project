@@ -64,6 +64,8 @@ def generate_launch_description():
                 "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
                 "/overhead_camera/image_raw@sensor_msgs/msg/Image[gz.msgs.Image",
                 "/overhead_camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo",
+                "/wrist_camera/image_raw@sensor_msgs/msg/Image[gz.msgs.Image",
+                "/wrist_camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo",
             ],
         ),
         Node(

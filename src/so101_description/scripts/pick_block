@@ -1,0 +1,110 @@
+#!/opt/so101-ik/bin/python
+import math
+import sys
+import tempfile
+import xml.etree.ElementTree as ET
+from pathlib import Path
+import numpy as np
+import rclpy
+from ament_index_python.packages import get_package_share_directory
+from control_msgs.action import FollowJointTrajectory
+from rclpy.action import ActionClient
+from rclpy.node import Node
+from sensor_msgs.msg import JointState
+from trajectory_msgs.msg import JointTrajectoryPoint
+from robokin.placo import PlacoConfig, PlacoKinematics
+ARM = ['shoulder_pan', 'shoulder_lift', 'elbow_flex', 'wrist_flex', 'wrist_roll']
+class Pickup(Node):
+    def __init__(self):
+        super().__init__('pick_block')
+        for name, value in [('x', 0.18), ('y', 0.0), ('grasp_z', 0.025),
+                            ('approach_height', 0.05), ('open', 0.8), ('closed', 0.0)]:
+            self.declare_parameter(name, value)
+        self.joints = None
+        self.create_subscription(JointState, '/joint_states', self.on_joints, 10)
+        self.arm = ActionClient(self, FollowJointTrajectory, '/arm_controller/follow_joint_trajectory')
+        self.gripper = ActionClient(self, FollowJointTrajectory, '/gripper_controller/follow_joint_trajectory')
+
+    def on_joints(self, msg):
+        self.joints = dict(zip(msg.name, msg.position))
+
+    def run_action(self, client, names, positions, seconds):
+        goal = FollowJointTrajectory.Goal()
+        goal.trajectory.joint_names = names
+        point = JointTrajectoryPoint()
+        point.positions = [float(x) for x in positions]
+        point.time_from_start.sec = seconds
+        goal.trajectory.points = [point]
+        future = client.send_goal_async(goal)
+        rclpy.spin_until_future_complete(self, future)
+        handle = future.result()
+        if handle is None or not handle.accepted:
+            raise RuntimeError('Controller rejected trajectory')
+        result = handle.get_result_async()
+        rclpy.spin_until_future_complete(self, result)
+        if result.result().result.error_code != 0:
+            raise RuntimeError(f'Trajectory failed: {result.result().result.error_string}')
+
+    def run(self):
+        for client in (self.arm, self.gripper):
+            if not client.wait_for_server(timeout_sec=30):
+                raise RuntimeError('Trajectory controller unavailable; start the simulation first')
+        while rclpy.ok() and (self.joints is None or not all(j in self.joints for j in ARM)):
+            rclpy.spin_once(self, timeout_sec=1.0)
+        share = Path(get_package_share_directory('so101_description'))
+        robot = ET.parse(share / 'urdf/so101.urdf')
+        # The moving jaw is not part of arm IK; freeze it in the solver model.
+        robot.find(".//joint[@name='gripper']").set('type', 'fixed')
+        for mesh in robot.iter('mesh'):
+            mesh.set('filename', str(share / mesh.get('filename').removeprefix('package://so101_description/')))
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'robot.urdf'
+            robot.write(path)
+            solver = PlacoKinematics(path, 'gripper_frame_link', PlacoConfig(rot_weight=0.03))
+            q = solver.make_configuration({j: self.joints[j] for j in ARM})
+            x = self.get_parameter('x').value
+            y = self.get_parameter('y').value
+            z = self.get_parameter('grasp_z').value
+            height = self.get_parameter('approach_height').value
+            # Tool Z points down; tool X points toward the base.
+            yaw = math.atan2(y, x) + math.pi
+            c, s = math.cos(yaw), math.sin(yaw)
+            target = np.eye(4)
+            target[:3, :3] = [[c, s, 0], [s, -c, 0], [0, 0, -1]]
+            plans = []
+            for label, target_z in [('approach', z + height), ('grasp', z), ('lift', z + height)]:
+                target[:3, 3] = [x, y, target_z]
+                q = solver.solve_goal(q, target, n_iters=700)
+                actual = solver.fk(q)
+                error = np.linalg.norm(actual[:3, 3] - target[:3, 3])
+                if not np.isfinite(q).all() or error > 0.01:
+                    raise RuntimeError(f'{label} IK failed (position error {error:.3f} m)')
+                plans.append([q[solver.joint_names.index(j)] for j in ARM])
+            self.get_logger().info('IK solved. Opening gripper and approaching block.')
+            self.run_action(self.gripper, ['gripper'], [self.get_parameter('open').value], 2)
+            self.run_action(self.arm, ARM, plans[0], 4)
+            self.run_action(self.arm, ARM, plans[1], 4)
+            self.run_action(self.gripper, ['gripper'], [self.get_parameter('closed').value], 2)
+            self.run_action(self.arm, ARM, plans[2], 4)
+            self.get_logger().info('Lift completed; inspect Gazebo to confirm the block was grasped.')
+
+
+def main():
+    rclpy.init()
+    node = Pickup()
+    try:
+        node.run()
+    except KeyboardInterrupt:
+        pass
+    except (RuntimeError, ValueError) as exc:
+        node.get_logger().error(str(exc))
+        return 1
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

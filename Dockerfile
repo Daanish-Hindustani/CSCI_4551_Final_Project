@@ -2,9 +2,12 @@ FROM ros:jazzy-ros-base-noble
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1-mesa-dri \
+    git \
     novnc \
     openbox \
     python3-colcon-common-extensions \
+    python3-pip \
+    python3-venv \
     ros-jazzy-joint-state-publisher-gui \
     ros-jazzy-robot-state-publisher \
     ros-jazzy-rviz2 \
@@ -13,6 +16,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     x11vnc \
     xvfb \
     && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m venv --system-site-packages /opt/so101-ik && \
+    /opt/so101-ik/bin/pip install --no-cache-dir 'placo==0.12.0' \
+    'robokin[placo] @ git+https://github.com/legalaspro/robokin.git@8ae1ee6eb40095027c373b27e60f1d22f9667a99'
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-jazzy-gz-ros2-control \

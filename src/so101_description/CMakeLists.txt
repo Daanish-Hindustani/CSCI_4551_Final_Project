@@ -5,5 +5,6 @@ find_package(ament_cmake REQUIRED)
 
 install(DIRECTORY config launch meshes rviz urdf worlds DESTINATION share/${PROJECT_NAME})
 install(FILES LICENSE DESTINATION share/${PROJECT_NAME})
+install(PROGRAMS scripts/pick_block DESTINATION lib/${PROJECT_NAME})
 
 ament_package()

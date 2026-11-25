@@ -48,3 +48,30 @@ To check that frames are arriving inside the container, run:
 ```bash
 ros2 topic hz /overhead_camera/image_raw
 ```
+
+## Experimental inverse-kinematics pickup
+
+Rebuild the Docker image after pulling these changes and start the simulation as
+above. In another terminal run:
+
+```bash
+docker exec -it so101-jazzy bash
+source /workspace/install/setup.bash
+ros2 run so101_description pick_block
+```
+
+The node uses robokin with Placo to solve approach, grasp and lift waypoints for
+the green block's initial position. It then sends trajectories to the existing
+controllers. To try another position (meters in the robot base frame):
+
+```bash
+ros2 run so101_description pick_block --ros-args -p x:=0.18 -p y:=-0.06
+```
+
+`grasp_z`, `approach_height`, `open`, and `closed` are also ROS parameters.
+The script assumes the block has not moved and does not detect collisions or verify
+that the gripper holds it. In a headless Gazebo test, the motion completed but the
+green block stayed on the floor; the grasp and simulated contact need tuning. Watch the
+simulation and stop it if the arm approaches an obstacle. The Docker image
+installs the IK dependencies in `/opt/so101-ik`; a native installation needs the
+same Python environment and ROS packages.

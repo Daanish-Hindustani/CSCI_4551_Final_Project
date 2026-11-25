@@ -82,7 +82,7 @@ def generate_launch_description():
             executable="spawner",
             arguments=[
                 "joint_state_broadcaster", "arm_controller", "gripper_controller",
-                "--controller-manager-timeout", "60",
+                "--controller-manager-timeout", "60", "--switch-timeout", "60",
             ],
             output="screen",
         ),
